@@ -1,0 +1,23 @@
+name: Collaborative Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update_html_and_readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Update team leader
+        if: github.actor == 'LUCAS-coder-cyber'
+        run:
+          sed -i '/<\/body>/i <p>Updated by Team Leader on '"$(date)"'</p>' index.html
+
+      - name: Update other
+        if: github.actor != 'LUCAS-coder-cyber'
+        run:
+          sed -i '/<\/body>/i <p>Updated by other on '"$(date)"'</p>' index.html
