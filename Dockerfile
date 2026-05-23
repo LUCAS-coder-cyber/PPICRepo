@@ -1,20 +1,20 @@
-# Use Python 3.9 slim image
+# Use a Python base image
 FROM python:3.9-slim
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Install Git
+# Install necessary dependencies including git
 RUN apt-get update && \
-    apt-get install -y git && \
+    apt-get install -y --no-install-recommends git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy all project files into container
+# Copy the contents of the project to the /app directory
 COPY . /app
 
-# Make entrypoint script executable
-RUN chmod +x /app/.github/scripts/entry_point.sh
+# Ensure the entrypoint script exists and is executable
+RUN chmod +x /app/entrypoint.sh
 
-# Run the entrypoint script
-ENTRYPOINT ["/app/.github/scripts/entry_point.sh"]
+# Set the entrypoint to the entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
