@@ -14,7 +14,7 @@ RUN apt-get update && \
 COPY . /app
 
 # Make entrypoint script executable
-RUN chmod +x /app/.github/scripts/entrypoint.sh
+RUN chmod +x /app/.github/scripts/entry_point.sh
 
 # Run the entrypoint script
-ENTRYPOINT ["/app/.github/scripts/entrypoint.sh"]
+ENTRYPOINT ["/app/.github/scripts/entry_point.sh"]
