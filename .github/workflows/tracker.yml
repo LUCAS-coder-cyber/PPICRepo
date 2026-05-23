@@ -1,0 +1,88 @@
+name: Project Automation – Set Issue to Done
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  update-status:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract issue number from PR body
+        id: issue
+        run: |
+          body="${{ github.event.pull_request.body }}"
+          if [[ "$body" =~ ([Ff]ixes|[Cc]loses|[Rr]esolves)\ #[0-9]+ ]]; then
+            issue_number=$(echo "$body" | grep -oE '#[0-9]+' | head -1 | tr -d '#')
+            echo "issue_number=$issue_number" >> $GITHUB_OUTPUT
+          else
+            echo "No linked issue found"
+            exit 0
+          fi
+
+      - name: Update issue status to Done in project
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ steps.issue.outputs.issue_number }}
+        run: |
+          # Get project ID
+          project_id=$(gh api graphql -f query='
+            query {
+              user(login: "LUCAS-coder-cyber") {
+                projectV2(number: 2) {
+                  id
+                }
+              }
+            }' --jq '.data.user.projectV2.id')
+
+          # Get project item ID for the issue
+          item_id=$(gh api graphql -f query='
+            query($owner:String!, $repo:String!, $issue:Int!) {
+              repository(owner:$owner, name:$repo) {
+                issue(number:$issue) {
+                  projectItems(first:20) {
+                    nodes { id }
+                  }
+                }
+              }
+            }' -f owner="LUCAS-coder-cyber" -f repo="PPICRepo" -f issue="$ISSUE" --jq '.data.repository.issue.projectItems.nodes[0].id')
+
+          # Get Status field + Done option IDs
+          status_info=$(gh api graphql -f query='
+            query($project:ID!) {
+              node(id:$project) {
+                ... on ProjectV2 {
+                  fields(first:20) {
+                    nodes {
+                      ... on ProjectV2SingleSelectField {
+                        id
+                        name
+                        options { id name }
+                      }
+                    }
+                  }
+                }
+              }
+            }' -f project="$project_id")
+
+          status_field_id=$(echo "$status_info" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
+          done_option_id=$(echo "$status_info" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name=="Done") | .id')
+
+          # Update the project item
+          gh api graphql -f query='
+            mutation($item:ID!, $field:ID!, $option:ID!) {
+              updateProjectV2ItemFieldValue(
+                input: {
+                  itemId: $item,
+                  fieldId: $field,
+                  value: { singleSelectOptionId: $option }
+                }
+              ) {
+                clientMutationId
+              }
+            }' \
+            -f item="$item_id" \
+            -f field="$status_field_id" \
+            -f option="$done_option_id"

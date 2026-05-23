@@ -1,4 +1,4 @@
-name: CI Workflow
+name: CI Workflow - Docker
 
 on:
   push:
@@ -10,15 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Build Docker image
-        run: |
-          docker build -t vowel-frequency-analyser:latest .
+        run: docker build -t task-manager:latest .
 
       - name: Run Docker container
-        run: |
-          docker run --rm \
-            -e GITHUB_USER="${{ github.actor }}" \
-            vowel-frequency-analyser:latest 
+        env:
+          GITHUB_USER: ${{ github.actor }}
+        run: docker run --rm -e GITHUB_USER="${GITHUB_USER}" task-manager:latest
